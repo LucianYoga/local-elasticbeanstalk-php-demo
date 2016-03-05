@@ -35,6 +35,30 @@ Once installed, we can see that `docker` is at version 10.1:
     docker -v
     $ Docker version 1.10.2, build c3959b1
 
+Start our `docker-machine`:
+
+    docker-machine start default
+
+Port-forward in `VirtualBox`, so we can access port 80 transparently:
+
+    VBoxManage list vms
+    VBoxManage modifyvm "defaut" --natpf1 "guestnginx,tcp,,80,,80"
+
+Set our environment variables:
+
+    docker-machine config default
+
+    export DOCKER_CERT_PATH=/Users/whoever/.docker/machine/certs
+    export DOCKER_TLS_VERIFY=1
+    export DOCKER_HOST=tcp://192.168.99.100:2376
+
+Load the environment so we can use docker from the local shell:
+
+    eval "$(docker-machine env default)"
+
+
+## Install `awsebcli`
+
 We install the `awsebcli` using homebrew:
 
     brew install awsebcli
@@ -76,27 +100,6 @@ to
         except (OSError, CommandError):
             return False
 
-Start our `docker-machine`:
-
-    docker-machine start default
-
-Port-forward in `VirtualBox`, so we can access port 80 transparently:
-
-    VBoxManage list vms
-    VBoxManage modifyvm "defaut" --natpf1 "guestnginx,tcp,,80,,80"
-
-Set our environment variables:
-
-    docker-machine config default
-
-    export DOCKER_CERT_PATH=/Users/whoever/.docker/machine/certs
-    export DOCKER_TLS_VERIFY=1
-    export DOCKER_HOST=tcp://192.168.99.100:2376
-
-Load the environment so we can use docker from the local shell:
-
-    eval "$(docker-machine env default)"
-
 
 ## Building our Docker image
 
@@ -137,7 +140,7 @@ We should now be able to see the Ubuntu welcome page at the address reported by 
     # http://192.168.99.100/
 
 
-## Accesing the containers
+## Accessing the containers
 
 Find the appropriate container id, and start a bash shell on it:
 
