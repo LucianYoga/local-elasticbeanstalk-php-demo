@@ -1,0 +1,8 @@
+/var/log/example.log {
+ missingok
+ rotate 30
+ compress
+ notifempty
+ copytruncate
+ su app app
+}
