@@ -5,7 +5,9 @@ set -e
 # and https://github.com/eugeneware/docker-apache-php/blob/master/start.sh
 # for more ideas as to how to use an init script.
 
+# Make a copy of our .env file, as we don't want to pollute the original
 cp /var/www/html/.env /tmp/
+
 # Function to update the app configuration to make the service environment
 # variables available.
 function setEnvironmentVariable() {
@@ -28,5 +30,6 @@ for _curVar in `env | grep MYSQL | awk -F = '{print $1}'`;do
     setEnvironmentVariable ${_curVar} ${!_curVar}
 done
 
-#/usr/sbin/apache2ctl -D FOREGROUND
+# Now that /tmp/.env is populated, we can start/restart apache
+# and let our PHP scripts access them.
 service apache2 restart

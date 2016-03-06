@@ -108,12 +108,59 @@ Use composer to install our dependencies
     cd php-app
     composer install
 
+## Environment variables
+
+We need to make certain environment variables available to our PHP scripts, particularly
+those to do with connecting to our MySQL container.
+
+To do this, we create a `php-app/.env` file, with placeholders for the expected
+environment variables:
+
+    # php-app/.env
+    # The variables below are replaced during container startup by init.sh
+    DB_HOST="${MYSQL_PORT_3306_TCP_ADDR}"
+    DB_DATABASE="${MYSQL_ENV_MYSQL_DATABASE}"
+    DB_USERNAME=root
+    DB_PASSWORD="${MYSQL_ENV_MYSQL_ROOT_PASSWORD}"
+
+We then use our `init.sh` script to read the environment variables during the
+initialisation of our PHP container, and replace the placeholders in `.env` with
+the values:
+
+    # Make a copy of our .env file, as we don't want to pollute the original
+    cp /var/www/html/.env /tmp/
+
+    # Update the app configuration to make the service environment
+    # variables available.
+    function setEnvironmentVariable() {
+        if [ -z "$2" ]; then
+            echo "Environment variable '$1' not set."
+            return
+        fi
+
+        # Check whether variable already exists
+        if grep -q "\${$1}" /tmp/.env; then
+            # Reset variable
+            sed -i "s/\${$1}/$2/g" /tmp/.env
+        fi
+    }
+
+    # Grep for variables that look like MySQL (MYSQL)
+    for _curVar in `env | grep MYSQL | awk -F = '{print $1}'`;do
+        # awk has split them by the equals sign
+        # Pass the name and value to our function
+        setEnvironmentVariable ${_curVar} ${!_curVar}
+    done
+
+    # Now that /tmp/.env is populated, we can start/restart apache
+    # and let our PHP scripts access them.
+    service apache2 restart
+
 
 ## Building our Docker image
 
 Build our docker image:
 
-    cd production
     docker build -t mebooks/apache-php5 production
 
 
