@@ -1,0 +1,13 @@
+{
+    "name": "mebooks/php-app",
+    "require": {
+        "vlucas/phpdotenv": "^2.2"
+    },
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Jason Darwin",
+            "email": "jcdarwin@gmail.com"
+        }
+    ]
+}

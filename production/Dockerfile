@@ -1,5 +1,7 @@
-# refer: https://github.com/hopsoft/relay/wiki/How-to-Deploy-Docker-apps-to-Elastic-Beanstalk
-FROM ubuntu:14.04
+# refer:
+# * https://github.com/hopsoft/relay/wiki/How-to-Deploy-Docker-apps-to-Elastic-Beanstalk
+# * https://github.com/phusion/baseimage-docker
+FROM phusion/baseimage:0.9.18
 MAINTAINER Jason Darwin <jcdarwin@gmail.com>
 
 # set environment variables
@@ -7,11 +9,8 @@ ENV APP_NAME=eb-demo-php
 
 # install apache and php5
 RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
-    apt-get -y install apache2 php5 libapache2-mod-php5 php5-mcrypt php5-json curl git supervisor && \
-    apt-get clean && \
-    rm -rf /var/www/html && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+    apt-get -y upgrade && \
+    apt-get -y install apache2 php5 libapache2-mod-php5 php5-mysql php5-mcrypt php5-json curl git mysql-client
 
 # enable apache defaults and mods
 RUN update-rc.d apache2 defaults && \
@@ -30,26 +29,22 @@ RUN /usr/sbin/php5enmod mcrypt
 RUN curl -sS https://getcomposer.org/installer | php && \
     mv composer.phar /usr/local/bin/composer
 
-# ensure log directories exist
-RUN mkdir /var/log/supervisord/ && \
-    mkdir /var/log/apache2/ && \
-    mkdir /var/log/init/
-
 # setup logrotate
 ADD logrotate /etc/logrotate.d/${APP_NAME}
 
-# Add supervisor
-ADD supervisor.conf /etc/supervisor/conf.d/supervisor.conf
-
 # add init script
-ADD init.sh /init.sh
+ADD init.sh /etc/my_init.d/init.sh
 
 # make our init script runnable
-RUN chmod a+x /init.sh
+RUN chmod a+x /etc/my_init.d/init.sh
 
-# Supervisor starts our processes, including the init script
-CMD ["/bin/bash", "/usr/local/bin/supervisord -n"]
+# clean up
+RUN apt-get clean && \
+    rm -rf /var/www/html && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-#ENTRYPOINT ["/init.sh"]
+# use baseimage-docker's init system.
+CMD ["/sbin/my_init"]
 
 EXPOSE 80 443

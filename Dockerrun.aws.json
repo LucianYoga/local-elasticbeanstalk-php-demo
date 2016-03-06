@@ -16,6 +16,27 @@
 	],
 	"containerDefinitions": [
 		{
+			"name": "mysql",
+			"image": "mysql:5.6",
+			"essential": true,
+			"portMappings": [
+				{
+					"hostPort": 3306,
+					"containerPort": 3306
+				}
+			],
+			"environment": [
+				{
+					"name": "MYSQL_ROOT_PASSWORD",
+					"value": "password"
+				},
+				{
+					"name": "MYSQL_DATABASE",
+					"value": "my_db"
+				}
+			]
+		},
+		{
 			"name": "php-apache",
 			"image": "mebooks/apache-php5",
 			"essential": true,
@@ -37,27 +58,9 @@
 					"hostPort": 80,
 					"containerPort": 80
 				}
-			]
-		},
-		{
-			"name": "mysql",
-			"image": "mysql:5.6",
-			"essential": true,
-			"portMappings": [
-				{
-					"hostPort": 3306,
-					"containerPort": 3306
-				}
 			],
-			"environment": [
-				{
-					"name": "MYSQL_ROOT_PASSWORD",
-					"value": "password"
-				},
-				{
-					"name": "MYSQL_DATABASE",
-					"value": "my_db"
-				}
+			"links": [
+				"mysql"
 			]
 		}
 	]

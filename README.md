@@ -18,43 +18,42 @@ Note that our Docker image will not contain our app, as we want to be able to re
 for future revisions of our app. If our app was bundled into the image, we'd need to rebuild the
 Docker image each time our app was revised, rather than simply starting up new containers.
 
-Additional notes are to be found at:
-
-* https://github.com/hopsoft/relay/wiki/How-to-Deploy-Docker-apps-to-Elastic-Beanstalk
-* http://www.sitepoint.com/docker-and-dockerfiles-made-easy/
-* http://www.michaelgallego.fr/blog/2015/07/18/using-elastic-beanstalk-multi-container-with-php/
-
 
 ## Installation
 
 We use `docker-machine` on OSX via the [Docker ToolBox](https://www.docker.com/products/docker-toolbox).
 As we're using Max OSX, this means that we'll end up with a Virtualbox Linux VM that will be used to run Docker.
 
-Once installed, we can see that `docker` is at version 10.1:
-
-    docker -v
-    $ Docker version 1.10.2, build c3959b1
-
 Start our `docker-machine`:
 
     docker-machine start default
+
+Set our environment variables:
+
+    # Retrieve our config
+    docker-machine config default
+
+    # Set our environment values base on the docker-machine config
+    export DOCKER_CERT_PATH=/Users/whoever/.docker/machine/certs
+    export DOCKER_TLS_VERIFY=1
+    export DOCKER_HOST=tcp://192.168.99.100:2376
+
+
+## Setup docker so we can use it from our current shell
 
 Port-forward in `VirtualBox`, so we can access port 80 transparently:
 
     VBoxManage list vms
     VBoxManage modifyvm "defaut" --natpf1 "guestnginx,tcp,,80,,80"
 
-Set our environment variables:
-
-    docker-machine config default
-
-    export DOCKER_CERT_PATH=/Users/whoever/.docker/machine/certs
-    export DOCKER_TLS_VERIFY=1
-    export DOCKER_HOST=tcp://192.168.99.100:2376
-
 Load the environment so we can use docker from the local shell:
 
     eval "$(docker-machine env default)"
+
+Once installed, we can see that `docker` is at version 10.1:
+
+    docker -v
+    $ Docker version 1.10.2, build c3959b1
 
 
 ## Install `awsebcli`
@@ -100,13 +99,22 @@ to
         except (OSError, CommandError):
             return False
 
+## Installing Composer
+
+    curl -sS https://getcomposer.org/installer | sudo php -- --install-dir=/usr/local/bin --filename=composer
+
+Use composer to install our dependencies
+
+    cd php-app
+    composer install
+
 
 ## Building our Docker image
 
 Build our docker image:
 
     cd production
-    docker build -t mebooks/apache-php5 .
+    docker build -t mebooks/apache-php5 production
 
 
 ## Create our `Dockerrun.aws.json`
@@ -125,19 +133,37 @@ Finally, use `eb local` to create our docker containers locally:
 
     eb local run
 
+In a second terminal
+
+    eb local status
+    docker ps
+
 Alternatively, we can start the containers directly:
 
     # Start just the PHP container
     docker run -tid -p 80:80 mebooks/apache-php5
 
     # Start both containers linked
-    docker run -p 3306:3306 --name mysqlserver -e MYSQL_ROOT_PASSWORD=password -e MYSQL_DATABASE=my_db -d mysql
-    docker run -tid -p 80:80 -v ~/workspace/eb-demo-php/php-app:/var/www/html --name apache-php5-app --link mysqlserver:mysqldb mebooks/apache-php5
+    docker run -p 3306:3306 \
+        -e MYSQL_ROOT_PASSWORD=password \
+        -e MYSQL_DATABASE=my_db \
+        -d mysql \
+        --name mysqlserver
 
-We should now be able to see the Ubuntu welcome page at the address reported by `docker-machine ip`
+    docker run -tid -p 80:80 \
+        -v $PWD/php-app:/var/www/html \
+        -v $PWD/config:/etc/apache2/sites-enabled \
+        --link mysqlserver:mysqldb mebooks/apache-php5 \
+        --name apache-php5-app
+
+We should now be able to see the PHP Info details at the address reported by `docker-machine ip`, e.g.:
 
     docker-machine ip
     # http://192.168.99.100/
+
+We should also be able to see a simple example of connecting to our MySQL database:
+
+....http://192.168.99.100/mysql.php
 
 
 ## Accessing the containers
@@ -146,12 +172,33 @@ Find the appropriate container id, and start a bash shell on it:
 
     docker ps
 
-    CONTAINER ID        IMAGE
-    832af3ff45d8        mebooks/apache-php5:latest
-    fc6a9553583f        mysql:5.6
+    $ CONTAINER ID        IMAGE
+    $ 832af3ff45d8        mebooks/apache-php5:latest
+    $ fc6a9553583f        mysql:5.6
 
     # Access our PHP container
     docker exec -it 832af3ff45d8 bash
+
+Alternatively, we can use `eb` to find the details, include human-readable container names
+
+    eb local status
+
+    $ Platform: 64bit Amazon Linux 2015.09 v2.0.8 running Multi-container Docker 1.9.1 (Generic)
+    $ Container name: elasticbeanstalk_mysql_1
+    $ Container ip: 127.0.0.1
+    $ Container running: True
+    $ Exposed host port(s): 3306
+    $ Full local URL(s): 127.0.0.1:3306
+
+    $ Container name: elasticbeanstalk_phpapache_1
+    $ Container ip: 127.0.0.1
+    $ Container running: True
+    $ Exposed host port(s): 80
+    $ Full local URL(s): 127.0.0.1:80
+
+Access our PHP container
+
+    docker exec -it elasticbeanstalk_phpapache_1 bash
 
     # check our apache config
     apachectl configtest
@@ -159,19 +206,37 @@ Find the appropriate container id, and start a bash shell on it:
     # view our apache config
     cat /etc/apache2/sites-enabled/vhost.conf
 
-    # Access our MySql container
-    docker exec -it fc6a9553583f bash
+    # Find the ip of our MySQL container
+    env | grep MYSQL_1_PORT_3306_TCP_ADDR
+
+    $ ELASTICBEANSTALK_MYSQL_1_PORT_3306_TCP_ADDR=172.17.0.2
+    $ MYSQL_1_PORT_3306_TCP_ADDR=172.17.0.2
+
+    # Login to mysql
+    mysql -u root -h 172.17.0.2  -p
+
+Access our MySQL container
+
+    docker exec -it elasticbeanstalk_mysql_1 bash
 
     # Display our databases -- we should see my_db
     mysql -u root -p -e "show databases;"
 
-# Cleaning up
+
+## Cleaning up
 
 Once we're finished, remove our containers
 
-    docker rm 832af3ff45d8
-    docker rm fc6a9553583f
+    docker rm 832af3ff45d8 fc6a9553583f
 
 If we're finished with our image, we can delete it:
 
     docker rmi mebooks/apache-php5
+
+
+## Further
+
+* http://docs.aws.amazon.com/elasticbeanstalk/latest/dg/create_deploy_docker-eblocal.html
+* https://github.com/hopsoft/relay/wiki/How-to-Deploy-Docker-apps-to-Elastic-Beanstalk
+* http://www.sitepoint.com/docker-and-dockerfiles-made-easy/
+* http://www.michaelgallego.fr/blog/2015/07/18/using-elastic-beanstalk-multi-container-with-php/

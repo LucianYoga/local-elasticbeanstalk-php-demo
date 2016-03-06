@@ -1,12 +1,3 @@
-/var/log/supervisord/supervisord.log {
- missingok
- rotate 30
- compress
- notifempty
- copytruncate
- su app app
-}
-
 /var/log/init/init.log {
  missingok
  rotate 30
