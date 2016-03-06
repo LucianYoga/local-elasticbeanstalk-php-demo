@@ -9,7 +9,7 @@ ENV APP_NAME=eb-demo-php
 
 # install apache and php5
 RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
-    apt-get -y upgrade && \
+    apt-get -y upgrade -o Dpkg::Options::="--force-confold" && \
     apt-get -y install apache2 php5 libapache2-mod-php5 php5-mysql php5-mcrypt php5-json curl git mysql-client
 
 # enable apache defaults and mods
