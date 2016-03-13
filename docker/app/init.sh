@@ -1,12 +1,15 @@
 #!/usr/bin/env bash
 set -e
 
+# Set our environment variables
+APP=php-app
+
 # Check http://geoffrey.io/a-php-development-environment-with-docker.html
 # and https://github.com/eugeneware/docker-apache-php/blob/master/start.sh
 # for more ideas as to how to use an init script.
 
 # Make a copy of our .env file, as we don't want to pollute the original
-cp /var/www/html/.env /tmp/
+cp /var/www/${APP}/.env /tmp/
 
 # Function to update the app configuration to make the service environment
 # variables available.
@@ -19,7 +22,7 @@ function setEnvironmentVariable() {
     # Check whether variable already exists
     if grep -q "\${$1}" /tmp/.env; then
         # Reset variable
-        sed -i "s/\${$1}/$2/g" /tmp/.env
+        sed -i "s/#\(.*\)\${$1}/\1$2/g" /tmp/.env
     fi
 }
 

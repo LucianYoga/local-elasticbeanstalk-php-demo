@@ -1,67 +1,17 @@
 {
-	"AWSEBDockerrunVersion": 2,
-	"volumes": [
+	"AWSEBDockerrunVersion": 1,
+	"Image": {
+		"Name": "mebooks/php-app:2.2.0",
+		"Update": "true"
+	},
+	"Authentication": {
+		"Bucket": "elasticbeanstalk-us-west-1-342732433199",
+		"Key": ".dockercfg.json"
+	},
+	"Ports": [
 		{
-			"name": "php-app",
-			"host": {
-				"sourcePath": "/var/app/current/php-app"
-			}
-		},
-		{
-			"name": "apache",
-			"host": {
-				"sourcePath": "/var/app/current/config"
-			}
+			"ContainerPort": "80"
 		}
 	],
-	"containerDefinitions": [
-		{
-			"name": "mysql",
-			"image": "mysql:5.6",
-			"essential": true,
-			"portMappings": [
-				{
-					"hostPort": 3306,
-					"containerPort": 3306
-				}
-			],
-			"environment": [
-				{
-					"name": "MYSQL_ROOT_PASSWORD",
-					"value": "password"
-				},
-				{
-					"name": "MYSQL_DATABASE",
-					"value": "my_db"
-				}
-			]
-		},
-		{
-			"name": "php-apache",
-			"image": "mebooks/apache-php5",
-			"essential": true,
-			"memory": 128,
-			"mountPoints": [
-				{
-					"sourceVolume": "php-app",
-					"containerPath": "/var/www/html",
-					"readOnly": true
-				},
-				{
-					"sourceVolume": "apache",
-					"containerPath": "/etc/apache2/sites-enabled",
-					"readOnly": true
-				}
-			],
-			"portMappings": [
-				{
-					"hostPort": 80,
-					"containerPort": 80
-				}
-			],
-			"links": [
-				"mysql"
-			]
-		}
-	]
+	"Logging": "/var/log/apache2"
 }

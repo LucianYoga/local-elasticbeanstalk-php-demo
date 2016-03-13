@@ -1,6 +1,6 @@
 # Build our base apache-php5 image
 #
-# refer:
+# Refer:
 # * https://github.com/hopsoft/relay/wiki/How-to-Deploy-Docker-apps-to-Elastic-Beanstalk
 # * https://github.com/phusion/baseimage-docker
 FROM phusion/baseimage:0.9.18
@@ -21,7 +21,8 @@ RUN sed -i -e "s/post_max_size\s*=\s*8M/post_max_size = 20M/g" /etc/php5/apache2
 RUN sed -i -e "s/short_open_tag\s*=\s*Off/short_open_tag = On/g" /etc/php5/apache2/php.ini
 RUN sed -i -e "s/error_reporting = .*$/error_reporting = E_ERROR | E_WARNING | E_PARSE/" /etc/php5/apache2/php.ini
 # log to stderr
-RUN sed -i -e "s/error_log = .*$/error_log = \/proc\/self\/fd\/2/g" /etc/php5/apache2/php.ini
+RUN sed -i -e "s/error_log = .*$/error_log = \/var\/log\/php/g" /etc/php5/apache2/php.ini && \
+    mkdir /var/log/php
 
 # fix for php5-mcrypt
 RUN /usr/sbin/php5enmod mcrypt
@@ -32,7 +33,6 @@ RUN curl -sS https://getcomposer.org/installer | php && \
 
 # clean up
 RUN apt-get clean && \
-    rm -rf /var/www/html && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # use baseimage-docker's init system.

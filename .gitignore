@@ -5,4 +5,4 @@
 !.elasticbeanstalk/*.global.yml
 
 php-app/vendor
-docker/*.tar
+docker/app/*.tgz
