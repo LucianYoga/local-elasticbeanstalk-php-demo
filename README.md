@@ -300,11 +300,15 @@ to spin up both our `php-app` container and an associated `mysql` container.
 				],
 				"environment": [
 					{
-						"name": "MYSQL_ROOT_PASSWORD",
+						"name": "MYSQL_USERNAME",
+						"value": "root"
+					},
+					{
+						"name": "MYSQL_PASSWORD",
 						"value": "password"
 					},
 					{
-						"name": "MYSQL_DATABASE",
+						"name": "MYSQL_DB_NAME",
 						"value": "my_db"
 					}
 				]
