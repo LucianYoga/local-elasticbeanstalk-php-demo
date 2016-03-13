@@ -5,7 +5,7 @@ FROM phusion/baseimage:0.9.18
 MAINTAINER Jason Darwin <jcdarwin@gmail.com>
 
 # set environment variables
-ENV APP_NAME=eb-demo-php
+ENV APP_NAME=php-app
 
 # install apache and php5
 RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
@@ -34,6 +34,15 @@ RUN curl -sS https://getcomposer.org/installer | php && \
 # setup logrotate
 ADD logrotate /etc/logrotate.d/${APP_NAME}
 
+# add our apache conf
+ADD config/${APP_NAME}.conf /etc/apache2/sites-available
+RUN a2ensite /etc/apache2/${APP_NAME}
+
+# add our app
+ADD ${APP_NAME}.tgz /var/www
+RUN tar xvzf /var/www/${APP_NAME}.tgz && \
+    rm /var/www/${APP_NAME}.tgz
+
 # add init script
 ADD init.sh /etc/my_init.d/init.sh
 
@@ -51,5 +60,7 @@ RUN apt-get clean && \
 
 # use baseimage-docker's init system.
 CMD ["/sbin/my_init"]
+
+VOLUME ["/var/log"]
 
 EXPOSE 80 443
