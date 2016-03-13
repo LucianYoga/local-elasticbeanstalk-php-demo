@@ -191,7 +191,7 @@ We use a Makefile to make our builds slightly easier:
 
 Commit and tag our changes
 
-	git tag 2.2.0
+	git tag 2.3.0
 
 Build our apache-php base docker image:
 
@@ -202,7 +202,7 @@ Build our apache-php base docker image:
 Edit `docker/app/Dockerfile` and ensure that we refering to the same version
 as that that we just built:
 
-	FROM mebooks/apache-php5:2.2.0
+	FROM mebooks/apache-php5:2.3.0
 
 Build our app docker image:
 
@@ -212,7 +212,7 @@ Build our app docker image:
 ## Check that our containers function as expected
 
 	# Start just the PHP container
-	docker run -tid -p 80:80 mebooks/php-app:2.2.0
+	docker run -tid -p 80:80 mebooks/php-app:2.3.0
 
 	# Start both containers linked
 	docker run -p 3306:3306 \
@@ -224,7 +224,7 @@ Build our app docker image:
 
 	docker run -tid -p 80:80 \
 		--link mysqlserver:mysqldb \
-		mebooks/php-app:2.2.0
+		mebooks/php-app:2.3.0
 
 We should now be able to see the PHP Info details at the address reported by `docker-machine ip`, e.g.:
 

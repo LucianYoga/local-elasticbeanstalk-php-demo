@@ -3,7 +3,7 @@
 # Refer:
 # * https://github.com/hopsoft/relay/wiki/How-to-Deploy-Docker-apps-to-Elastic-Beanstalk
 # * https://github.com/phusion/baseimage-docker
-FROM mebooks/apache-php5:2.2.0
+FROM mebooks/apache-php5:2.3.0
 MAINTAINER Jason Darwin <jcdarwin@gmail.com>
 
 # set environment variables
