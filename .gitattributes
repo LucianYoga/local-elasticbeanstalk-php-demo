@@ -1,0 +1,6 @@
+Dockerrun.aws.json export-ignore
+.gitignore export-ignore
+README.md export-ignore
+Makefile export-ignore
+config/ export-ignore
+docker/ export-ignore
