@@ -1,11 +1,10 @@
+# Build our base apache-php5 image
+#
 # refer:
 # * https://github.com/hopsoft/relay/wiki/How-to-Deploy-Docker-apps-to-Elastic-Beanstalk
 # * https://github.com/phusion/baseimage-docker
 FROM phusion/baseimage:0.9.18
 MAINTAINER Jason Darwin <jcdarwin@gmail.com>
-
-# set environment variables
-ENV APP_NAME=php-app
 
 # install apache and php5
 RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
@@ -30,28 +29,6 @@ RUN /usr/sbin/php5enmod mcrypt
 # install composer
 RUN curl -sS https://getcomposer.org/installer | php && \
     mv composer.phar /usr/local/bin/composer
-
-# setup logrotate
-ADD logrotate /etc/logrotate.d/${APP_NAME}
-
-# add our apache conf
-ADD config/${APP_NAME}.conf /etc/apache2/sites-available
-RUN a2ensite /etc/apache2/${APP_NAME}
-
-# add our app
-ADD ${APP_NAME}.tgz /var/www
-RUN tar xvzf /var/www/${APP_NAME}.tgz && \
-    rm /var/www/${APP_NAME}.tgz
-
-# add init script
-ADD init.sh /etc/my_init.d/init.sh
-
-# make our init script runnable
-RUN chmod a+x /etc/my_init.d/init.sh
-
-# forward access and error logs to docker log collector
-#RUN ln -sf /proc/self/fd/1 /var/log/apache2/access.log && \
-#    ln -sf /proc/self/fd/2 /var/log/apache2/error.log
 
 # clean up
 RUN apt-get clean && \

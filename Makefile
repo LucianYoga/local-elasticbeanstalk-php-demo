@@ -1,11 +1,19 @@
-NAME=mebooks/apache-php5
+BASE=mebooks/apache-php5
+APP=mebooks/php-app
 VERSION=`git describe --tags`
 CORE_VERSION=HEAD
 
-all: prepare build
+all: build-base prepare
 
-prepare:
-    git archive --format tgz HEAD php-app > docker/php-app.tgz
+base: build-base
 
-build:
-    docker build -t $(NAME):$(VERSION) docker
+app: prepare-app build-app
+
+build-base:
+	docker build -t $(BASE):$(VERSION) docker/base
+
+prepare-app:
+	git archive --format tgz HEAD php-app > docker/app/php-app.tgz
+
+build-app:
+	docker build -t $(APP):$(VERSION) docker/app

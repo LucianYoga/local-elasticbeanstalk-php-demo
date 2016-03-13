@@ -198,8 +198,7 @@ Alternatively, we can start the containers directly:
 		--name mysqlserver
 
 	docker run -tid -p 80:80 \
-		-v $PWD/php-app:/var/www/html \
-		-v $PWD/config:/etc/apache2/sites-enabled \
+		-v $PWD/.elasticbeanstalk/logs:/var/log \
 		--link mysqlserver:mysqldb mebooks/apache-php5 \
 		mebooks/apache-php5
 
