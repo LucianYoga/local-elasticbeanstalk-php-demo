@@ -211,13 +211,17 @@ Build our app docker image:
 
 ## Check that our containers function as expected
 
+    # Set our environment variable
+    VERSION=`git describe --tags` && echo $VERSION
+
     # Start just the PHP container
     docker run -tid -p 80:80 \
         --name=php-app \
-        mebooks/php-app:2.3.0
+        mebooks/php-app:${VERSION}
 
     # Start both containers linked
     docker run -p 3306:3306 \
+        -e MYSQL_USERNAME=root \
         -e MYSQL_ROOT_PASSWORD=password \
         -e MYSQL_DATABASE=my_db \
         -d \
@@ -227,7 +231,7 @@ Build our app docker image:
     docker run -tid -p 80:80 \
         --name=php-app \
         --link mysqlserver:mysqldb \
-        mebooks/php-app:2.3.0
+        mebooks/php-app:${VERSION}
 
 We should now be able to see the PHP Info details at the address reported by `docker-machine ip`, e.g.:
 
