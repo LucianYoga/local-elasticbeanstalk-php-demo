@@ -430,16 +430,76 @@ Now, we need to initialise our `.elasticbeanstalk/config.yml`:
 
 Refer https://github.com/hopsoft/relay/wiki/How-to-Deploy-Docker-apps-to-Elastic-Beanstalk
 
+    # Create our environment, answering the prompts accordingly
+    eb create
+
+        Enter Environment Name
+        (default is local-elasticbeanstalk):
+        Enter DNS CNAME prefix
+        (default is local-elasticbeanstalk):
+        WARNING: You have uncommitted changes.
+        Creating application version archive "app-920a-160402_122923".
+        Uploading local-elasticbeanstalk-php-demo/app-920a-160402_122923.zip to S3. This may take a while.
+        Upload Complete.
+        Environment details for: local-elasticbeanstalk
+          Application name: local-elasticbeanstalk-php-demo
+          Region: ap-southeast-2
+          Deployed Version: app-920a-160402_122923
+          Environment ID: e-2fus33kkiw
+          Platform: 64bit Amazon Linux 2015.09 v2.0.8 running Docker 1.9.1
+          Tier: WebServer-Standard
+          CNAME: local-elasticbeanstalk.ap-southeast-2.elasticbeanstalk.com
+          Updated: 2016-04-01 23:29:28.892000+00:00
+        Printing Status:
+        INFO: createEnvironment is starting.
+        INFO: Using elasticbeanstalk-ap-southeast-2-342732433199 as Amazon S3 storage bucket for environment data.
+        INFO: Created security group named: sg-9ff23efb
+        INFO: Created load balancer named: awseb-e-2-AWSEBLoa-1S6M19LJ2NY6R
+         -- Events -- (safe to Ctrl+C)
+
+    # CTRL-C when prompted, and follow progress:
+    eb status
+
+Note that `eb create` will use the settings from `.gitattributes` to `export-ignore` files in the zip
+file that it creates and uploads to s3.
+
+    Creating application version archive "app-920a-160402_122923".
+    Uploading local-elasticbeanstalk-php-demo/app-920a-160402_122923.zip to S3. This may take a while.
+
+We can easily download this zip file and inspect the contents:
+
+    s3cmd get s3://elasticbeanstalk-ap-southeast-2-342732433199/local-elasticbeanstalk-php-demo/app-920a-160402_122923.zip
+
 
 ## Cleaning up
 
-Once we're finished, remove our containers
+Once we're finished, remove our containers, either by id or by name
 
     docker rm 832af3ff45d8 fc6a9553583f
 
 If we're finished with our image, we can delete it:
 
     docker rmi mebooks/apache-php5
+
+
+## RDS
+
+Create our RDS instance.
+We'll use:
+
+* RDS MySQL
+* T2 Small
+* Multi-AZ
+* Allocated storage: 5GB
+* DB Instance Identifier: mebooks-mysql-dbinstance
+* Master Username: root
+
+Ensure that the security group allows connections to and from port 3306, and that the EC2 instances
+will be also using this security group.
+
+Once setup, we should be able to connect from an EC2 instance in the same group as follows:
+
+    mysql -h mebooks-mysql-dbinstance.criieggarwwz.ap-southeast-2.rds.amazonaws.com -u root -p
 
 
 ## Further

@@ -1,4 +1,4 @@
-Dockerrun.aws.json export-ignore
+#Dockerrun.aws.json export-ignore
 .gitattributes export-ignore
 .gitignore export-ignore
 README.md export-ignore
