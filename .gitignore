@@ -4,5 +4,6 @@
 !.elasticbeanstalk/*.cfg.yml
 !.elasticbeanstalk/*.global.yml
 
+.env_local
 php-app/vendor
 docker/app/*.tgz

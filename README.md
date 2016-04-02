@@ -30,15 +30,41 @@ Start our `docker-machine`:
 
     docker-machine start default
 
-Set our environment variables:
+Add our environment variables to `.env_local`:
 
-    # Retrieve our config
-    docker-machine config default
+    #!/bin/bash
+    export DOCKER_MACHINE=default
+    export DOCKER_USER=mebooks
+    export DOCKER_EMAIL=jcdarwin@gmail.com
+    export DOCKER_PASSWORD=WHATEVER
 
-    # Set our environment values based on the docker-machine config
-    export DOCKER_CERT_PATH=/Users/whoever/.docker/machine/certs
-    export DOCKER_TLS_VERIFY=1
-    export DOCKER_HOST=tcp://192.168.99.101:2376
+    eval "$(docker-machine env $DOCKER_MACHINE)"
+
+Set permissions:
+
+    chmod a+g .env_local
+
+Apply our environment variables:
+
+    . ./.env_local
+
+We should then see our environment values based on `docker-machine config default`
+
+    env | grep DOCKER
+
+        DOCKER_PASSWORD=WHATEVER
+        DOCKER_HOST=tcp://192.168.99.101:2376
+        DOCKER_MACHINE_NAME=default
+        DOCKER_TLS_VERIFY=1
+        DOCKER_MACHINE=default
+        DOCKER_USER=mebooks
+        DOCKER_CERT_PATH=/Users/jasondarwin/.docker/machine/machines/default
+        DOCKER_EMAIL=jcdarwin@gmail.com
+
+Note that running the `.env_local` loads the environment so we can use docker
+from the local shell, and does the same as:
+
+    eval "$(docker-machine env default)"
 
 
 ## Setup docker so we can use it from our current shell
@@ -47,10 +73,6 @@ Port-forward in `VirtualBox`, so we can access port 80 transparently:
 
     VBoxManage list vms
     VBoxManage modifyvm "defaut" --natpf1 "guestnginx,tcp,,80,,80"
-
-Load the environment so we can use docker from the local shell:
-
-    eval "$(docker-machine env default)"
 
 Once installed, we can see that `docker` is at version 10.1:
 
@@ -112,7 +134,7 @@ Use composer to install our dependencies
     composer install
 
 
-## Environment variables
+## App environment variables
 
 We need to make certain environment variables available to our PHP scripts, particularly
 those to do with connecting to our MySQL container.
@@ -173,18 +195,30 @@ We use a Makefile to make our builds slightly easier:
 
     all: build-base prepare
 
-    base: build-base
+    base: build-base push-base
 
-    app: prepare-app build-app
+    app: prepare-app build-app push-app
 
     build-base:
         docker build -t $(BASE_IMAGE):$(VERSION) docker/base
 
+    push-base:
+        . ./.env_local
+        docker login --username=$(DOCKER_USER) --email=$(DOCKER_EMAIL) --password=$(DOCKER_PASSWORD)
+        docker push $(BASE_IMAGE)
+
     prepare-app:
+        # Update Dockerrun.aws.json with the current image version
+        sed -i '' "s~${APP_IMAGE}\:[^\"]*~${APP_IMAGE}\:$(VERSION)~g" Dockerrun.aws.json
         git archive --format tgz HEAD $(APP) > docker/app/$(APP).tgz
 
     build-app:
         docker build -t $(APP_IMAGE):$(VERSION) docker/app
+
+    push-app:
+        . ./.env_local
+        docker login --username=$(DOCKER_USER) --email=$(DOCKER_EMAIL) --password=$(DOCKER_PASSWORD)
+        docker push mebooks/php-app
 
 
 ## Build the docker images
@@ -196,7 +230,6 @@ Commit and tag our changes
 Build our apache-php base docker image:
 
     make base
-
     docker images
 
 Edit `docker/app/Dockerfile` and ensure that we refering to the same version
@@ -254,7 +287,7 @@ Login to our docker account:
     docker login
 
     # Alternatively, specify username and email, and enter password when prompted
-    docker login --username=mebooks --email=jcdarwin@gmail.com
+    docker login --username=mebooks --email=jcdarwin@gmail.com --password=WHATEVER
 
 The login will create a config file at `~/.docker/config.json` if it doesn't already exist
 
@@ -290,6 +323,8 @@ Push our images to docker:
 
     docker push mebooks/apache-php5
     docker push mebooks/php-app
+
+Note that the `make app` task automatically does the `docker push mebooks/php-app`
 
 
 ## Create our `Dockerrun.aws.json` (multi-container version)
@@ -537,8 +572,6 @@ Once we know the public DNS of our ec2 instance, we can directly ssh in as `ec2-
 Successive deployments should be a matter of:
 
     make app
-    docker images
-    docker push mebooks/php-app
 
 As we've tagged our `Dockerrun.aws.json` file with the current version of the repo,
 we need to commit changes, otherwise the `eb create` / `eb deploy`
@@ -547,6 +580,12 @@ we need to commit changes, otherwise the `eb create` / `eb deploy`
 
     eb deploy -v local-elasticbeanstalk
 
+
+## Terminating
+
+Once we've finished with a particular environment, we can terminate it:
+
+    eb terminate local-elasticbeanstalk
 
 ## Cleaning up
 

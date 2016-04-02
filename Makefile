@@ -6,12 +6,17 @@ CORE_VERSION=HEAD
 
 all: build-base prepare
 
-base: build-base
+base: build-base push-base
 
-app: prepare-app build-app
+app: prepare-app build-app push-app
 
 build-base:
 	docker build -t $(BASE_IMAGE):$(VERSION) docker/base
+
+push-base:
+	. ./.env_local
+	docker login --username=$(DOCKER_USER) --email=$(DOCKER_EMAIL) --password=$(DOCKER_PASSWORD)
+	docker push $(BASE_IMAGE)
 
 prepare-app:
 	# Update Dockerrun.aws.json with the current image version
@@ -20,3 +25,8 @@ prepare-app:
 
 build-app:
 	docker build -t $(APP_IMAGE):$(VERSION) docker/app
+
+push-app:
+	. ./.env_local
+	docker login --username=$(DOCKER_USER) --email=$(DOCKER_EMAIL) --password=$(DOCKER_PASSWORD)
+	docker push $(APP_IMAGE)
