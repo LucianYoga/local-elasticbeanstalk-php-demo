@@ -47,8 +47,8 @@ We're presuming that you've got installed:
 * a public/private key pair, [created and registered on AWS](http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-key-pairs.html),
 and stored locally, e.g.:
 
-    ~/.ssh/aws-eb
-    ~/.ssh/aws-eb.pub
+	~/.ssh/aws-eb
+	~/.ssh/aws-eb.pub
 
 
 ## Configuration
@@ -58,27 +58,32 @@ and implement them as environment variables.
 This should be the only place we have to regularly make changes, and is used by our `Makefile`
 when running build steps:
 
-    #!/bin/bash
+	#!/bin/bash
 
-    export EB_APP=local-elasticbeanstalk
-    export EB_ENVIRONMENT=dev-$EB_APP
-    export EB_SCALE_MIN=2
+	# If ECR_REGISTRY is set, we'll be using the default AWS ECR
+	# otherwise hub.docker as our image registry.
+	export ECR_REGISTRY=342732433199.dkr.ecr.us-west-2.amazonaws.com
+	export ECR_PROFILE=oregon
 
-    export DOCKER_MACHINE=default
-    export DOCKER_USER=mebooks
-    export DOCKER_EMAIL=jcdarwin@gmail.com
-    export DOCKER_PASSWORD=bailter
+	export EB_APP=local-elasticbeanstalk
+	export EB_ENVIRONMENT=dev-$EB_APP
+	export EB_SCALE_MIN=2
 
-    DOCKERED=eval "$(docker-machine env $DOCKER_MACHINE)"
+	export DOCKER_MACHINE=default
+	export DOCKER_USER=mebooks
+	export DOCKER_EMAIL=jcdarwin@gmail.com
+	export DOCKER_PASSWORD=bailter
+
+	DOCKERED=eval "$(docker-machine env $DOCKER_MACHINE)"
 
 Set execute permissions on this file:
 
-    chmod a+g .env_local
+	chmod a+g .env_local
 
 Note that running the `.env_local` loads the environment so we can use docker
 (once installed) from the local shell, and does the same as:
 
-    eval "$(docker-machine env default)"
+	eval "$(docker-machine env default)"
 
 
 ## Installation
@@ -86,86 +91,103 @@ Note that running the `.env_local` loads the environment so we can use docker
 We use `docker-machine` on OSX via the [Docker ToolBox](https://www.docker.com/products/docker-toolbox).
 The easiest way to do this is:
 
-    brew cask install dockertoolbox
+	brew cask install dockertoolbox
 
 As we're using Max OSX, this means that we'll end up with a Virtualbox Linux VM that will be used to run Docker.
 
 Start our `docker-machine`:
 
-    docker-machine start default
+	docker-machine start default
 
 
 ### Setup docker so we can use it from our current shell
 
 Port-forward in `VirtualBox`, so we can access port 80 transparently:
 
-    VBoxManage list vms
-    VBoxManage modifyvm "defaut" --natpf1 "guestnginx,tcp,,80,,80"
+	VBoxManage list vms
+	VBoxManage modifyvm "defaut" --natpf1 "guestnginx,tcp,,80,,80"
 
 Once installed, we can see that `docker` is at version 10.1:
 
-    docker -v
-    $ Docker version 1.10.2, build c3959b1
+	docker -v
+	$ Docker version 1.10.2, build c3959b1
 
 If we apply our environment variables:
 
-    . ./.env_local
+	. ./.env_local
 
 we should then see our environment values based on `docker-machine config default`
 plus any extra that we've added in `.env_local`:
 
-    env | grep DOCKER
+	env | grep DOCKER
 
-        DOCKER_PASSWORD=WHATEVER
-        DOCKER_HOST=tcp://192.168.99.101:2376
-        DOCKER_MACHINE_NAME=default
-        DOCKER_TLS_VERIFY=1
-        DOCKER_MACHINE=default
-        DOCKER_USER=mebooks
-        DOCKER_CERT_PATH=/Users/jasondarwin/.docker/machine/machines/default
-        DOCKER_EMAIL=jcdarwin@gmail.com
+		DOCKER_PASSWORD=WHATEVER
+		DOCKER_HOST=tcp://192.168.99.101:2376
+		DOCKER_MACHINE_NAME=default
+		DOCKER_TLS_VERIFY=1
+		DOCKER_MACHINE=default
+		DOCKER_USER=mebooks
+		DOCKER_CERT_PATH=/Users/jasondarwin/.docker/machine/machines/default
+		DOCKER_EMAIL=jcdarwin@gmail.com
 
 and we should be able to access docker directly
 
-    docker info
+	docker info
+
+
+### Install `awscli`
+
+We install the `awscli` using `homebrew`:
+
+	brew install awscli
+
+Ensure there's a block in our credentials file for a region tht supports the Elastic Container Registry (ecr):
+
+	vim ~/.aws/credentials
+
+	[oregon]
+	region = us-west-2
+	output = table
+	aws_access_key_id = WHICHEVER
+	aws_secret_access_key = WHATEVER
 
 
 ### Install `awsebcli`
 
 We install the `awsebcli` using `homebrew`:
 
-    brew install awsebcli
+	brew install awsebcli
 
 However, [there's a problem with the version compatibility check](https://forums.aws.amazon.com/thread.jspa?threadID=225425), meaning that awsebcli thinks that docker 1.10.2 is < docker 1.6, and we receive the following message:
 
-    "You must install Docker version 1.6.0 to continue. If you are using Mac OS X, ensure you have boot2docker version 1.6.0. Currently, "eb local" does not support Windows."
+	"You must install Docker version 1.6.0 to continue. If you are using Mac OS X, ensure you have boot2docker version 1.6.0. Currently, "eb local" does not support Windows."
 
 To rectify this, currently we must edit `/usr/local/Cellar/aws-elasticbeanstalk/3.7.3/libexec/lib/python2.7/site-packages/ebcli/containers/compat.py` as follows:
 
-    def supported_docker_installed():
-        """
-        Return whether proper Docker version is installed.
-        :return: bool
-        """
+	def supported_docker_installed():
+		"""
+		Return whether proper Docker version is installed.
+		:return: bool
+		"""
 
-        try:
-            #return commands.version() >= SUPPORTED_DOCKER_V
-            return True
-        # OSError = Not installed
-        # CommandError = docker versions less than 1.5 give exit code 1
-        # with 'docker --version'.
-        except (OSError, CommandError):
-            return False
+		try:
+			#return commands.version() >= SUPPORTED_DOCKER_V
+			return True
+		# OSError = Not installed
+		# CommandError = docker versions less than 1.5 give exit code 1
+		# with 'docker --version'.
+		except (OSError, CommandError):
+			return False
 
 
 ### Install Composer
 
-    curl -sS https://getcomposer.org/installer | sudo php -- --install-dir=/usr/local/bin --filename=composer
+	curl -sS https://getcomposer.org/installer | sudo php -- --install-dir=/usr/local/bin --filename=composer
 
 Use composer to install the dependencies for our `php-app`
 
-    cd php-app
-    composer install
+	cd php-app
+	composer install
 
 
 ## App environment variables
@@ -176,137 +198,160 @@ those to do with connecting to our MySQL container.
 To do this, we create a `php-app/.env` file, with placeholders for the expected
 environment variables:
 
-    # php-app/.env
-    # The variables below are replaced during container startup by init.sh
+	# php-app/.env
+	# The variables below are replaced during container startup by init.sh
 
-    # If we're using a local mysql container, the MYSQL variables are populated
-    #DB_HOST="${MYSQLDB_PORT_3306_TCP_ADDR}"
-    #DB_DATABASE="${MYSQLDB_ENV_MYSQL_DATABASE}"
-    #DB_PASSWORD="${MYSQLDB_ENV_MYSQL_ROOT_PASSWORD}"
-    #DB_USERNAME="${MYSQLDB_ENV_MYSQL_USERNAME}"
+	# If we're using a local mysql container, the MYSQL variables are populated
+	#DB_HOST="${MYSQLDB_PORT_3306_TCP_ADDR}"
+	#DB_DATABASE="${MYSQLDB_ENV_MYSQL_DATABASE}"
+	#DB_PASSWORD="${MYSQLDB_ENV_MYSQL_ROOT_PASSWORD}"
+	#DB_USERNAME="${MYSQLDB_ENV_MYSQL_USERNAME}"
 
-    # If we;re using an AWS RDS instance, the RDS  variables are populated
-    #DB_HOST="${RDS_HOSTNAME}"
-    #DB_DATABASE="${RDS_DB_NAME}"
-    #DB_PASSWORD="${RDS_PASSWORD}"
-    #DB_USERNAME="${RDS_USERNAME}"
+	# If we;re using an AWS RDS instance, the RDS  variables are populated
+	#DB_HOST="${RDS_HOSTNAME}"
+	#DB_DATABASE="${RDS_DB_NAME}"
+	#DB_PASSWORD="${RDS_PASSWORD}"
+	#DB_USERNAME="${RDS_USERNAME}"
 
 We then use our `init.sh` script to read the environment variables during the
 initialisation of our `php-app` container, and replace the placeholders in `php-app/.env` with
 the environment variables values:
 
-    # Make a copy of our .env file, as we don't want to pollute the original
-    cp /var/www/html/.env /tmp/
+	# Make a copy of our .env file, as we don't want to pollute the original
+	cp /var/www/html/.env /tmp/
 
-    # Update the app configuration to make the service environment
-    # variables available.
-    function setEnvironmentVariable() {
-        if [ -z "$2" ]; then
-            echo "Environment variable '$1' not set."
-            return
-        fi
+	# Update the app configuration to make the service environment
+	# variables available.
+	function setEnvironmentVariable() {
+		if [ -z "$2" ]; then
+			echo "Environment variable '$1' not set."
+			return
+		fi
 
-        # Check whether variable already exists
-        if grep -q "\${$1}" /tmp/.env; then
-            # Reset variable
-            sed -i "s/\${$1}/$2/g" /tmp/.env
-        fi
-    }
+		# Check whether variable already exists
+		if grep -q "\${$1}" /tmp/.env; then
+			# Reset variable
+			sed -i "s/\${$1}/$2/g" /tmp/.env
+		fi
+	}
 
-    # Grep for variables that look like MySQL (for local deployments)
-    # or RDS (for remote deployments).
-    for _curVar in `env | grep 'MYSQL\|RDS' | awk -F = '{print $1}'`;do
-        # awk has split them by the equals sign
-        # Pass the name and value to our function
-        setEnvironmentVariable ${_curVar} ${!_curVar}
-    done
+	# Grep for variables that look like MySQL (for local deployments)
+	# or RDS (for remote deployments).
+	for _curVar in `env | grep 'MYSQL\|RDS' | awk -F = '{print $1}'`;do
+		# awk has split them by the equals sign
+		# Pass the name and value to our function
+		setEnvironmentVariable ${_curVar} ${!_curVar}
+	done
 
-    # Now that /tmp/.env is populated, we can start/restart apache
-    # and let our PHP scripts access them.
-    service apache2 restart
+	# Now that /tmp/.env is populated, we can start/restart apache
+	# and let our PHP scripts access them.
+	service apache2 restart
 
 
 ## Create our Makefile
 
 We use a Makefile to make our builds slightly easier:
 
-    include .env_local
-    BASE_IMAGE=mebooks/apache-php5
-    APP_IMAGE=mebooks/php-app
-    APP=php-app
-    VERSION=`git describe --tags`
-    CORE_VERSION=HEAD
+	include .env_local
+	BASE_IMAGE=mebooks/apache-php5
+	APP_IMAGE=mebooks/php-app
+	APP=php-app
+	VERSION=`git describe --tags`
+	CORE_VERSION=HEAD
 
-    all: build-base prepare
+	all: build-base prepare
 
-    base: build-base push-base
+	base: build-base push-base
 
-    app: prepare-app build-app push-app
+	app: prepare-app build-app push-app
 
-    environment: create-environment
+	environment: create-environment
 
-    #
-    # Our base image tasks
-    #
-    build-base:
-        docker build -t $(BASE_IMAGE):$(VERSION) docker/base
+	#
+	# Our base image tasks
+	#
+	build-base:
+		docker build -t $(BASE_IMAGE):$(VERSION) docker/base
 
-    push-base:
-        docker login --username=$(DOCKER_USER) --email=$(DOCKER_EMAIL) --password=$(DOCKER_PASSWORD)
-        docker push $(BASE_IMAGE)
+	push-base:
+		ifeq $(ECR_REGISTRY)
+			#Login to ECR Repository
+			LOGIN_STRING=`aws ecr get-login --profile $(ECR_PROFILE)`
+			${LOGIN_STRING}
 
-    #
-    # Our app image tasks
-    #
-    prepare-app:
-        # Update Dockerrun.aws.json with the current image version
-        sed -i '' "s~${APP_IMAGE}\:[^\"]*~${APP_IMAGE}\:$(VERSION)~g" Dockerrun.aws.json
-        git archive --format tgz HEAD $(APP) > docker/app/$(APP).tgz
+			# Tag and push our image -- we're presuming we've already set up a repository
+			# on our registry with the same name as our image.
+			docker tag $(BASE_IMAGE):latest $(ECR_REGISTRY)/$(BASE_IMAGE):latest
+			docker push $(ECR_REGISTRY)/$(BASE_IMAGE):latest
+		else
+			docker login --username=$(DOCKER_USER) --email=$(DOCKER_EMAIL) --password=$(DOCKER_PASSWORD)
+			docker push $(BASE_IMAGE)
+		endif
 
-    build-app:
-        docker build -t $(APP_IMAGE):$(VERSION) docker/app
+	#
+	# Our app image tasks
+	#
+	prepare-app:
+		# Update Dockerrun.aws.json with the current image version
+		sed -i '' "s~${APP_IMAGE}\:[^\"]*~${APP_IMAGE}\:$(VERSION)~g" Dockerrun.aws.json
+		git archive --format tgz HEAD $(APP) > docker/app/$(APP).tgz
 
-    push-app:
-        docker login --username=$(DOCKER_USER) --email=$(DOCKER_EMAIL) --password=$(DOCKER_PASSWORD)
-        docker push $(APP_IMAGE)
+	build-app:
+		docker build -t $(APP_IMAGE):$(VERSION) docker/app
 
-    #
-    # Our Elastic Beanstalk tasks
-    #
-    create-environment:
-        eb create -v \
-            --cfg $(EB_APP) \
-            --scale $(EB_SCALE_MIN) \
-            --cname $(EB_ENVIRONMENT) \
-            $(EB_ENVIRONMENT)
+	push-app:
+		ifeq $(ECR_REGISTRY)
+			#Login to ECR Repository
+			LOGIN_STRING=`aws ecr get-login --profile $(ECR_PROFILE)`
+			${LOGIN_STRING}
+
+			# Tag and push our image -- we're presuming we've already set up a repository
+			# on our registry with the same name as our image.
+			docker tag $(APP_IMAGE):$(VERSION) $(ECR_REGISTRY)/$(APP_IMAGE):$(VERSION)
+			docker push $(ECR_REGISTRY)/$(APP_IMAGE):$(VERSION)
+		else
+			docker login --username=$(DOCKER_USER) --email=$(DOCKER_EMAIL) --password=$(DOCKER_PASSWORD)
+			docker push $(APP_IMAGE)
+		endif
+
+	#
+	# Our Elastic Beanstalk tasks
+	#
+	create-environment:
+		eb create -v \
+			--cfg $(EB_APP) \
+			--scale $(EB_SCALE_MIN) \
+			--cname $(EB_ENVIRONMENT) \
+			$(EB_ENVIRONMENT)
+
 
 
 ## Build the docker images
 
 Commit and tag our changes, e.g.:
 
-    git tag 2.3.0
+	git tag 2.3.0
 
 The use of `git describe --tags` in the `Makefile` means that we'll be using the
 latest `git tag` to tag our Docker images.
 Note that, if you've made commits since your last `git tag`, we'll end up using a
 tag value which is a combination of the tag and the last commit hash:
 
-    git describe --tags
-        2.4.0-9-g8215032
+	git describe --tags
+		2.4.0-9-g8215032
 
 ### Build our `mebooks/apache-php5` base Docker image
 
-    # Create the `mebooks/apache-php5` Docker image
-    make base
+	# Create the `mebooks/apache-php5` Docker image
+	make base
 
-    # Check that the image was created
-    docker images
+	# Check that the image was created
+	docker images
 
 Edit `docker/app/Dockerfile` and ensure that our `php-app` is refering to the same
 version as that that we just built:
 
-    FROM mebooks/apache-php5:2.3.0
+	FROM mebooks/apache-php5:2.3.0
 
 Our `mebooks/apache-php5` Docker image should only need updating when we want to
 update the packages in the distribution, such as when there are security vulnerabilities.
@@ -316,12 +361,12 @@ update the packages in the distribution, such as when there are security vulnera
 Note that our app docker image wil be tagged with the current version of the repo
 and our `Dockerrun.aws.json` file will be updated accordingly.
 
-    # Create our php-app image and push it to hub.docker.com
-    make app
+	# Create our php-app image and push it to hub.docker.com
+	make app
 
-    # Check that we updated the image version in our `Dockerrun.aws.json`
-    cat Dockerrun.aws.json | grep 'Name'
-        "Name": "mebooks/php-app:2.4.0-8-gb0eef33",
+	# Check that we updated the image version in our `Dockerrun.aws.json`
+	cat Dockerrun.aws.json | grep 'Name'
+		"Name": "mebooks/php-app:2.4.0-8-gb0eef33",
 
 As we've just tagged our `Dockerrun.aws.json` file with the current version of the repo,
 we need to commit changes, otherwise the `eb create` / `eb deploy`
@@ -339,32 +384,32 @@ but should be deployed in the app bundle.
 
 ### Check that our containers function as expected
 
-    # Set our environment variable
-    VERSION=`git describe --tags` && echo $VERSION
+	# Set our environment variable
+	VERSION=`git describe --tags` && echo $VERSION
 
-    # Start just the PHP container
-    docker run -tid -p 80:80 \
-        --name=php-app \
-        mebooks/php-app:${VERSION}
+	# Start just the PHP container
+	docker run -tid -p 80:80 \
+		--name=php-app \
+		mebooks/php-app:${VERSION}
 
-    # Start both containers linked
-    docker run -p 3306:3306 \
-        -e MYSQL_USERNAME=root \
-        -e MYSQL_ROOT_PASSWORD=password \
-        -e MYSQL_DATABASE=my_db \
-        -d \
-        --name mysqlserver \
-        mysql
+	# Start both containers linked
+	docker run -p 3306:3306 \
+		-e MYSQL_USERNAME=root \
+		-e MYSQL_ROOT_PASSWORD=password \
+		-e MYSQL_DATABASE=my_db \
+		-d \
+		--name mysqlserver \
+		mysql
 
-    docker run -tid -p 80:80 \
-        --name=php-app \
-        --link mysqlserver:mysqldb \
-        mebooks/php-app:${VERSION}
+	docker run -tid -p 80:80 \
+		--name=php-app \
+		--link mysqlserver:mysqldb \
+		mebooks/php-app:${VERSION}
 
 We should now be able to see the PHP Info details at the address reported by `docker-machine ip`, e.g.:
 
-    docker-machine ip
-        http://192.168.99.101/
+	docker-machine ip
+		http://192.168.99.101/
 
 If we've started the `mysql` container, we should also be able to see a simple example of connecting to our MySQL database at http://192.168.99.101/mysql.php
 
@@ -377,12 +422,12 @@ gain access to pull our images from hub.docker.
 
 Login to our docker account:
 
-    # Enter the username, password and email when prompted
-    docker login
+	# Enter the username, password and email when prompted
+	docker login
 
-    # Alternatively, specify username, email and password
-    # If any of these parameters are not supplied, you'll be prompted for them
-    docker login --username=mebooks --email=jcdarwin@gmail.com --password=WHATEVER
+	# Alternatively, specify username, email and password
+	# If any of these parameters are not supplied, you'll be prompted for them
+	docker login --username=mebooks --email=jcdarwin@gmail.com --password=WHATEVER
 
 The login will create a config file at `~/.docker/config.json`.
 
@@ -390,43 +435,82 @@ AWS currently uses an older format of the docker config for authentication to hu
 so we need to change our current `~/.docker/config.json` to the required format
 by removing the `auths` wrapper:
 
-    # ~/.docker/config.json
-    {
-        "auths": {
-            "https://index.docker.io/v1/": {
-                "auth": "WHATEVER",
-                "email": "jcdarwin@gmail.com"
-            }
-        }
-    }
+	# ~/.docker/config.json
+	{
+		"auths": {
+			"https://index.docker.io/v1/": {
+				"auth": "WHATEVER",
+				"email": "jcdarwin@gmail.com"
+			}
+		}
+	}
 
 becomes:
 
-    # ~/.docker/.dockercfg.json
-    {
-            "https://index.docker.io/v1/": {
-                "auth": "WHATEVER",
-                "email": "jcdarwin@gmail.com"
-            }
-    }
+	# ~/.docker/.dockercfg.json
+	{
+			"https://index.docker.io/v1/": {
+				"auth": "WHATEVER",
+				"email": "jcdarwin@gmail.com"
+			}
+	}
 
 We now need to push this to a suitable s3 bucket so Elastic Beanstalk can use it to download
 our images from our private repository.
 
-    s3cmd put ~/.docker/.dockercfg.json s3://elasticbeanstalk-ap-southeast-2-342732433199
+	s3cmd put ~/.docker/.dockercfg.json s3://elasticbeanstalk-ap-southeast-2-<aws_account_id>
 
 Pushing our images to hub.docker is as simple as:
 
-    docker push mebooks/apache-php5
-    docker push mebooks/php-app
+	docker push mebooks/apache-php5
+	docker push mebooks/php-app
 
 Note that the `make app` task automatically does the `docker push mebooks/php-app`,
 while the `make base` task automatically does the `docker push mebooks/apache-php5`,
 
 Once pushed, we should be able to see our images on hub.docker:
 
-    https://hub.docker.com/r/mebooks/php-app/tags/
-    https://hub.docker.com/r/mebooks/apache-php5/tags/
+	https://hub.docker.com/r/mebooks/php-app/tags/
+	https://hub.docker.com/r/mebooks/apache-php5/tags/
+
+
+### Create our ECR respositories
+
+Alternatively, in this section we'll look at using Amazon's Elastic Container Registry (ECR) as a place to store our images instead of using hub.docker.
+
+Authenticate Docker to an Amazon ECR registry with [get-login](http://docs.aws.amazon.com/AmazonECR/latest/userguide/ECR_AWSCLI.html):
+
+	aws ecr --profile oregon get-login
+
+		docker login -u AWS -p BIGLONGNUMBERAPPEARSHERE -e none https://<aws_account_id>.dkr.ecr.us-west-2.amazonaws.com
+
+Note that https://<aws_account_id>.dkr.ecr.us-west-2.amazonaws.com is the URL for our container registry.
+
+Copy and paste the docker login command into a terminal to authenticate your Docker CLI to the registry. This command provides an authorization token that is valid for the specified registry for 12 hours.
+
+Create our repositories:
+
+	aws ecr create-repository --profile oregon --repository-name mebooks/apache-php5
+
+		registryId: <aws_account_id>
+		repositoryArn: arn:aws:ecr:us-west-2:<aws_account_id>:repository/mebooks/apache-php5
+		repositoryName: mebooks/apache-php5
+
+	aws ecr create-repository --profile oregon --repository-name mebooks/php-app
+
+		registryId: <aws_account_id>
+		repositoryArn: arn:aws:ecr:us-west-2:<aws_account_id>:repository/mebooks/php-app
+		repositoryName: mebooks/php-app
+
+Tag our images and push them:
+
+	docker tag mebooks/apache-php5:latest <aws_account_id>.dkr.ecr.us-west-2.amazonaws.com/mebooks/apache-php5:latest
+
+	docker push <aws_account_id>.dkr.ecr.us-west-2.amazonaws.com/mebooks/apache-php5:latest
+
+	docker tag mebooks/php-app:2.4.0-8-gb0eef33 <aws_account_id>.dkr.ecr.us-west-2.amazonaws.com/mebooks/php-app:2.4.0-8-gb0eef33
+
+	docker push <aws_account_id>.dkr.ecr.us-west-2.amazonaws.com/mebooks/php-app:2.4.0-8-gb0eef33
 
 
 ## Create our `Dockerrun.aws.json` (multi-container version)
@@ -434,51 +518,51 @@ Once pushed, we should be able to see our images on hub.docker:
 We can use a multi-container `Dockerrun.aws.json` if we want to use `eb local run`
 to spin up both our `php-app` container and an associated `mysql` container.
 
-    {
-        "AWSEBDockerrunVersion": 2,
-        "containerDefinitions": [
-            {
-                "name": "mysql",
-                "image": "mysql:5.6",
-                "essential": true,
-                "portMappings": [
-                    {
-                        "hostPort": 3306,
-                        "containerPort": 3306
-                    }
-                ],
-                "environment": [
-                    {
-                        "name": "MYSQL_USERNAME",
-                        "value": "root"
-                    },
-                    {
-                        "name": "MYSQL_PASSWORD",
-                        "value": "password"
-                    },
-                    {
-                        "name": "MYSQL_DB_NAME",
-                        "value": "my_db"
-                    }
-                ]
-            },
-            {
-                "name": "php-app",
-                "image": "mebooks/php-app",
-                "essential": true,
-                "memory": 128,
-                "portMappings": [
-                    {
-                        "hostPort": 80,
-                        "containerPort": 80
-                    }
-                ],
-                "links": [
-                    "mysql"
-                ]
-            }
-        ]
-    }
+	{
+		"AWSEBDockerrunVersion": 2,
+		"containerDefinitions": [
+			{
+				"name": "mysql",
+				"image": "mysql:5.6",
+				"essential": true,
+				"portMappings": [
+					{
+						"hostPort": 3306,
+						"containerPort": 3306
+					}
+				],
+				"environment": [
+					{
+						"name": "MYSQL_USERNAME",
+						"value": "root"
+					},
+					{
+						"name": "MYSQL_PASSWORD",
+						"value": "password"
+					},
+					{
+						"name": "MYSQL_DB_NAME",
+						"value": "my_db"
+					}
+				]
+			},
+			{
+				"name": "php-app",
+				"image": "mebooks/php-app",
+				"essential": true,
+				"memory": 128,
+				"portMappings": [
+					{
+						"hostPort": 80,
+						"containerPort": 80
+					}
+				],
+				"links": [
+					"mysql"
+				]
+			}
+		]
+	}
 
 Note that we specify a (very) weak `MYSQL_ROOT_PASSWORD` in our `Dockerrun.aws.json`
 -- you'll want to change this and not have it under version control.
@@ -488,69 +572,69 @@ Note that we specify a (very) weak `MYSQL_ROOT_PASSWORD` in our `Dockerrun.aws.j
 
 Finally, use `eb local` to create our docker containers locally:
 
-    eb local run
+	eb local run
 
 In a second terminal
 
-    eb local status
-    docker ps
+	eb local status
+	docker ps
 
 
 ## Accessing the containers locally
 
 Find the appropriate container id, and start a bash shell on it:
 
-    docker ps
+	docker ps
 
-    $ CONTAINER ID        IMAGE
-    $ 832af3ff45d8        mebooks/apache-php5:latest
-    $ fc6a9553583f        mysql:5.6
+	$ CONTAINER ID        IMAGE
+	$ 832af3ff45d8        mebooks/apache-php5:latest
+	$ fc6a9553583f        mysql:5.6
 
-    # Access our PHP container
-    docker exec -it 832af3ff45d8 bash
+	# Access our PHP container
+	docker exec -it 832af3ff45d8 bash
 
 Alternatively, we can use `eb` to find the details, including the human-readable container names:
 
-    eb local status
+	eb local status
 
-    $ Platform: 64bit Amazon Linux 2015.09 v2.0.8 running Multi-container Docker 1.9.1 (Generic)
-    $ Container name: elasticbeanstalk_mysql_1
-    $ Container ip: 127.0.0.1
-    $ Container running: True
-    $ Exposed host port(s): 3306
-    $ Full local URL(s): 127.0.0.1:3306
+	$ Platform: 64bit Amazon Linux 2015.09 v2.0.8 running Multi-container Docker 1.9.1 (Generic)
+	$ Container name: elasticbeanstalk_mysql_1
+	$ Container ip: 127.0.0.1
+	$ Container running: True
+	$ Exposed host port(s): 3306
+	$ Full local URL(s): 127.0.0.1:3306
 
-    $ Container name: elasticbeanstalk_phpapache_1
-    $ Container ip: 127.0.0.1
-    $ Container running: True
-    $ Exposed host port(s): 80
-    $ Full local URL(s): 127.0.0.1:80
+	$ Container name: elasticbeanstalk_phpapache_1
+	$ Container ip: 127.0.0.1
+	$ Container running: True
+	$ Exposed host port(s): 80
+	$ Full local URL(s): 127.0.0.1:80
 
 Access our PHP container:
 
-    docker exec -it elasticbeanstalk_phpapache_1 bash
+	docker exec -it elasticbeanstalk_phpapache_1 bash
 
-    # check our apache config
-    apachectl configtest
+	# check our apache config
+	apachectl configtest
 
-    # view our apache config
-    cat /etc/apache2/sites-enabled/vhost.conf
+	# view our apache config
+	cat /etc/apache2/sites-enabled/vhost.conf
 
-    # Find the ip of our MySQL container
-    env | grep MYSQL_1_PORT_3306_TCP_ADDR
+	# Find the ip of our MySQL container
+	env | grep MYSQL_1_PORT_3306_TCP_ADDR
 
-    $ ELASTICBEANSTALK_MYSQL_1_PORT_3306_TCP_ADDR=172.17.0.2
-    $ MYSQL_1_PORT_3306_TCP_ADDR=172.17.0.2
+	$ ELASTICBEANSTALK_MYSQL_1_PORT_3306_TCP_ADDR=172.17.0.2
+	$ MYSQL_1_PORT_3306_TCP_ADDR=172.17.0.2
 
-    # Login to mysql
-    mysql -u root -h 172.17.0.2  -p
+	# Login to mysql
+	mysql -u root -h 172.17.0.2  -p
 
 Access our MySQL container:
 
-    docker exec -it elasticbeanstalk_mysql_1 bash
+	docker exec -it elasticbeanstalk_mysql_1 bash
 
-    # Display our databases -- we should see my_db
-    mysql -u root -p -e "show databases;"
+	# Display our databases -- we should see my_db
+	mysql -u root -p -e "show databases;"
 
 
 ## Create our `Dockerrun.aws.json` (single container version)
@@ -560,23 +644,23 @@ in production we'll be using RDS to host MySQL, so we'll use a single container
 `Dockerrun.aws.json` to deploy our `php-app` container, and use an Amazon RDS
 instance for our database.
 
-    {
-        "AWSEBDockerrunVersion": 1,
-        "Image": {
-            "Name": "mebooks/php-app:2.4.0-8-gb0eef33",
-            "Update": "true"
-        },
-        "Authentication": {
-            "Bucket": "elasticbeanstalk-ap-southeast-2-342732433199",
-            "Key": ".dockercfg.json"
-        },
-        "Ports": [
-            {
-                "ContainerPort": "80"
-            }
-        ],
-        "Logging": "/var/log/apache2"
-    }
+	{
+		"AWSEBDockerrunVersion": 1,
+		"Image": {
+			"Name": "mebooks/php-app:2.4.0-8-gb0eef33",
+			"Update": "true"
+		},
+		"Authentication": {
+			"Bucket": "elasticbeanstalk-ap-southeast-2-<aws_account_id>",
+			"Key": ".dockercfg.json"
+		},
+		"Ports": [
+			{
+				"ContainerPort": "80"
+			}
+		],
+		"Logging": "/var/log/apache2"
+	}
 
 
 ## Initialise our Elastic Beanstalk app
@@ -584,94 +668,94 @@ instance for our database.
 Now that we're happy with the running the containers up locally, we need to initialise
 our `.elasticbeanstalk/config.yml` so we can deploy our containers to AWS:
 
-    eb init
+	eb init
 
 More info about the `eb cli` tool is to be found on the [Amazon site](http://docs.aws.amazon.com/elasticbeanstalk/latest/dg/eb-cli3-getting-started.html).
 
 We'll need to customise our configuration, so create a standard config as a starting point:
 
-    # This creates `.elasticbeanstalk/local-elasticbeanstalk.env.yml`
-    eb config
+	# This creates `.elasticbeanstalk/local-elasticbeanstalk.env.yml`
+	eb config
 
 Ensure we have settings as we want, e.g. the `MinSize` for autoscaling:
 
-      aws:autoscaling:asg:
-        Availability Zones: Any
-        Cooldown: '360'
-        Custom Availability Zones: 'ap-southeast-2'
-        MaxSize: '4'
-        MinSize: '2'
+	  aws:autoscaling:asg:
+		Availability Zones: Any
+		Cooldown: '360'
+		Custom Availability Zones: 'ap-southeast-2'
+		MaxSize: '4'
+		MinSize: '2'
 
 
 ## Create our Elastic Beanstalk application environment
 
 Refer https://github.com/hopsoft/relay/wiki/How-to-Deploy-Docker-apps-to-Elastic-Beanstalk
 
-    # Ensure `.env_local` specifies the correct `EB_ENVIRONMENT`:
-    export EB_ENVIRONMENT=dev-local-elasticbeanstalk
+	# Ensure `.env_local` specifies the correct `EB_ENVIRONMENT`:
+	export EB_ENVIRONMENT=dev-local-elasticbeanstalk
 
-    # Create our new environment on Elastic Beanstalk
-    make environment
+	# Create our new environment on Elastic Beanstalk
+	make environment
 
 `make environment` effectively runs something like the following, depending on
 your environment variable settings in `.env_local`:
 
-    eb create -v \
-        --scale 2
-        --cname dev-local-elasticbeanstalk \
-        dev-local-elasticbeanstalk
+	eb create -v \
+		--scale 2
+		--cname dev-local-elasticbeanstalk \
+		dev-local-elasticbeanstalk
 
 We should then see output at our terminal like the following:
 
-        INFO: Creating new application version using project code
-        WARNING: You have uncommitted changes.
-        INFO: Getting version label from git with git-describe
-        Creating application version archive "app-8215-160402_175219".
-        INFO: creating zip using git archive HEAD
-        INFO: git archive output: Dockerrun.aws.json
-        php-app/
-        php-app/.env
-        php-app/composer.json
-        php-app/composer.lock
-        php-app/public/
-        php-app/public/index.php
-        php-app/public/mysql.php
-        INFO: Uploading archive to s3 location: local-elasticbeanstalk-php-demo/app-8215-160402_175219.zip
-        Uploading local-elasticbeanstalk-php-demo/app-8215-160402_175219.zip to S3. This may take a while.
-        Upload Complete.
-        INFO: Creating AppVersion app-8215-160402_175219
-        INFO: Creating new environment
-        Environment details for: dev-local-elasticbeanstalk
-          Application name: local-elasticbeanstalk-php-demo
-          Region: ap-southeast-2
-          Deployed Version: app-8215-160402_175219
-          Environment ID: e-myq9pzyjxg
-          Platform: 64bit Amazon Linux 2015.09 v2.0.8 running Docker 1.9.1
-          Tier: WebServer-Standard
-          CNAME: dev-local-elasticbeanstalk.ap-southeast-2.elasticbeanstalk.com
-          Updated: 2016-04-02 04:52:24.369000+00:00
-        Printing Status:
-        INFO: createEnvironment is starting.
-        INFO: Using elasticbeanstalk-ap-southeast-2-342732433199 as Amazon S3 storage bucket for environment data.
-         -- Events -- (safe to Ctrl+C)
+		INFO: Creating new application version using project code
+		WARNING: You have uncommitted changes.
+		INFO: Getting version label from git with git-describe
+		Creating application version archive "app-8215-160402_175219".
+		INFO: creating zip using git archive HEAD
+		INFO: git archive output: Dockerrun.aws.json
+		php-app/
+		php-app/.env
+		php-app/composer.json
+		php-app/composer.lock
+		php-app/public/
+		php-app/public/index.php
+		php-app/public/mysql.php
+		INFO: Uploading archive to s3 location: local-elasticbeanstalk-php-demo/app-8215-160402_175219.zip
+		Uploading local-elasticbeanstalk-php-demo/app-8215-160402_175219.zip to S3. This may take a while.
+		Upload Complete.
+		INFO: Creating AppVersion app-8215-160402_175219
+		INFO: Creating new environment
+		Environment details for: dev-local-elasticbeanstalk
+		  Application name: local-elasticbeanstalk-php-demo
+		  Region: ap-southeast-2
+		  Deployed Version: app-8215-160402_175219
+		  Environment ID: e-myq9pzyjxg
+		  Platform: 64bit Amazon Linux 2015.09 v2.0.8 running Docker 1.9.1
+		  Tier: WebServer-Standard
+		  CNAME: dev-local-elasticbeanstalk.ap-southeast-2.elasticbeanstalk.com
+		  Updated: 2016-04-02 04:52:24.369000+00:00
+		Printing Status:
+		INFO: createEnvironment is starting.
+		INFO: Using elasticbeanstalk-ap-southeast-2-<aws_account_id> as Amazon S3 storage bucket for environment data.
+		 -- Events -- (safe to Ctrl+C)
 
-    # CTRL-C when prompted, and follow progress:
-    eb status
+	# CTRL-C when prompted, and follow progress:
+	eb status
 
 If we want to reference an existing config, we can do this during creation:
 
-    eb create -v --cfg local-elasticbeanstalk
+	eb create -v --cfg local-elasticbeanstalk
 
 Note that `eb create` will use the settings from `.gitattributes` to `export-ignore` files in the zip
 file that it creates and uploads to s3.
 As such, we have to be careful that the `Dockerrun.aws.json` file is included in the root level of our zip file.
 
-    Creating application version archive "app-4bbe-160402_140739".
-    Uploading local-elasticbeanstalk-php-demo/app-4bbe-160402_140739.zip to S3. This may take a while.
+	Creating application version archive "app-4bbe-160402_140739".
+	Uploading local-elasticbeanstalk-php-demo/app-4bbe-160402_140739.zip to S3. This may take a while.
 
 If we wish, we can easily download this zip file and inspect the contents:
 
-    s3cmd get s3://elasticbeanstalk-ap-southeast-2-342732433199/local-elasticbeanstalk-php-demo/app-4bbe-160402_140739.zip
+	s3cmd get s3://elasticbeanstalk-ap-southeast-2-<aws_account_id>/local-elasticbeanstalk-php-demo/app-4bbe-160402_140739.zip
 
 Once created (and even during creation), we will see our envionment in our AWS dashboard:
 https://ap-southeast-2.console.aws.amazon.com/elasticbeanstalk/home
@@ -700,7 +784,7 @@ as our EC2 instances.
 Once setup, we should be able to connect from an EC2 instance in the same group as follows
 (depending on the actual assigned RDS endpoint):
 
-    mysql -h mebooks-mysql-dbinstance.criieggarwwz.ap-southeast-2.rds.amazonaws.com -u root -p
+	mysql -h mebooks-mysql-dbinstance.criieggarwwz.ap-southeast-2.rds.amazonaws.com -u root -p
 
 As per [this answer](http://serverfault.com/a/540916), there's currently no easy way to automate the attachment of an RDS database existing outside of an Elastic Beanstalk environment to the environment during creation.
 Amazon seem to assume that you'll be wanting to create an RDS instance inside the Elastic Beanstalk environment,
@@ -709,10 +793,10 @@ wrong with your Elastic Beanstalk environment.
 
 Instead, if you want the RDS instance to exist outside of the environment you can simply provide the connection parameters as environment variables via the EB Console: Configuration -> Web Layer -> Software Configuration:
 
-    RDS_HOSTNAME: mebooks-mysql-dbinstance.criieggarwwz.ap-southeast-2.rds.amazonaws.com
-    RDS_DB_NAME : my_db
-    RDS_USERNAME: root
-    RDS_PASSWORD: WHATEVER
+	RDS_HOSTNAME: mebooks-mysql-dbinstance.criieggarwwz.ap-southeast-2.rds.amazonaws.com
+	RDS_DB_NAME : my_db
+	RDS_USERNAME: root
+	RDS_PASSWORD: WHATEVER
 
 These environment variables can then be [accessed from inside your PHP app](http://docs.aws.amazon.com/elasticbeanstalk/latest/dg/create_deploy_PHP.rds.html#create_deploy_PHP.rds.newDB).
 
@@ -729,9 +813,9 @@ new values.
 
 To see our application in the browser, we can use:
 
-    # opens a browser tab with something like:
-    # http://dev-local-elasticbeanstalk.ap-southeast-2.elasticbeanstalk.com/
-    eb open
+	# opens a browser tab with something like:
+	# http://dev-local-elasticbeanstalk.ap-southeast-2.elasticbeanstalk.com/
+	eb open
 
 We should see our PHP Info page, and be able to see our database connection details
 at `/mysql.php`.
@@ -739,19 +823,19 @@ at `/mysql.php`.
 Once our Elastic Beanstalk cluster is running , we can ssh into our load balancer,
 and then telnet to our instances:
 
-    # once sshed into the load balancer, you'll be presented with a choice of the
-    # EC2 instances if there are more than one.
-    eb ssh
-    sudo -s
-    yum install telnet
-    telnet mebooks-mysql-dbinstance.criieggarwwz.ap-southeast-2.rds.amazonaws.com
+	# once sshed into the load balancer, you'll be presented with a choice of the
+	# EC2 instances if there are more than one.
+	eb ssh
+	sudo -s
+	yum install telnet
+	telnet mebooks-mysql-dbinstance.criieggarwwz.ap-southeast-2.rds.amazonaws.com
 
 Once we know the public DNS of our ec2 instance, we can also directly ssh in as `ec2-user`.
 
-    ssh -i ~/.ssh/aws-eb  ec2-user@ec2-52-62-4-141.ap-southeast-2.compute.amazonaws.com
+	ssh -i ~/.ssh/aws-eb  ec2-user@ec2-52-62-4-141.ap-southeast-2.compute.amazonaws.com
 
-    # Once logged in, elevate to root to be able to acces docker:
-    sudo -s
+	# Once logged in, elevate to root to be able to acces docker:
+	sudo -s
 
 
 ## Redeploying
@@ -759,35 +843,35 @@ Once we know the public DNS of our ec2 instance, we can also directly ssh in as 
 Presuming that we're only updating our custom `php-app` code, successive deployments
 should be a matter of the following:
 
-    # create the image and push it to hub.docker
-    make app
+	# create the image and push it to hub.docker
+	make app
 
 As `make app` tagged our `Dockerrun.aws.json` file with the current version of the repo,
 we need to commit the changes, otherwise the `eb create` / `eb deploy`
 (which uses `git archive`) will use the previously-committed version of the `Dockerrun.aws.json` file.
 
-    git add Dockerrun.aws.json
-    git commit -m "Updated Docker image tag in Dockerrun.aws.json"
+	git add Dockerrun.aws.json
+	git commit -m "Updated Docker image tag in Dockerrun.aws.json"
 
-    eb deploy -v local-elasticbeanstalk
+	eb deploy -v local-elasticbeanstalk
 
 
 ## Terminating
 
 Once we've finished with a particular environment, we can terminate it:
 
-    eb terminate local-elasticbeanstalk
+	eb terminate local-elasticbeanstalk
 
 ## Cleaning up
 
 Once we're finished, we can remove our containers locally, either by id or by name
 
-    docker rm 832af3ff45d8 fc6a9553583f
+	docker rm 832af3ff45d8 fc6a9553583f
 
 If we're finished with our image, we can delete it:
 
-    docker rmi mebooks/php-app
-    docker rmi mebooks/apache-php5
+	docker rmi mebooks/php-app
+	docker rmi mebooks/apache-php5
 
 
 ## Summary

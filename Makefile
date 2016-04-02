@@ -20,8 +20,19 @@ build-base:
 	docker build -t $(BASE_IMAGE):$(VERSION) docker/base
 
 push-base:
-	docker login --username=$(DOCKER_USER) --email=$(DOCKER_EMAIL) --password=$(DOCKER_PASSWORD)
-	docker push $(BASE_IMAGE)
+	ifeq $(ECR_REGISTRY)
+		#Login to ECR Repository
+		LOGIN_STRING=`aws ecr get-login --profile $(ECR_PROFILE)`
+		${LOGIN_STRING}
+
+		# Tag and push our image -- we're presuming we've already set up a repository
+		# on our registry with the same name as our image.
+		docker tag $(BASE_IMAGE):latest $(ECR_REGISTRY)/$(BASE_IMAGE):latest
+		docker push $(ECR_REGISTRY)/$(BASE_IMAGE):latest
+	else
+		docker login --username=$(DOCKER_USER) --email=$(DOCKER_EMAIL) --password=$(DOCKER_PASSWORD)
+		docker push $(BASE_IMAGE)
+	endif
 
 #
 # Our app image tasks
@@ -35,8 +46,19 @@ build-app:
 	docker build -t $(APP_IMAGE):$(VERSION) docker/app
 
 push-app:
-	docker login --username=$(DOCKER_USER) --email=$(DOCKER_EMAIL) --password=$(DOCKER_PASSWORD)
-	docker push $(APP_IMAGE)
+	ifeq $(ECR_REGISTRY)
+		#Login to ECR Repository
+		LOGIN_STRING=`aws ecr get-login --profile $(ECR_PROFILE)`
+		${LOGIN_STRING}
+
+		# Tag and push our image -- we're presuming we've already set up a repository
+		# on our registry with the same name as our image.
+		docker tag $(APP_IMAGE):$(VERSION) $(ECR_REGISTRY)/$(APP_IMAGE):$(VERSION)
+		docker push $(ECR_REGISTRY)/$(APP_IMAGE):$(VERSION)
+	else
+		docker login --username=$(DOCKER_USER) --email=$(DOCKER_EMAIL) --password=$(DOCKER_PASSWORD)
+		docker push $(APP_IMAGE)
+	endif
 
 #
 # Our Elastic Beanstalk tasks
