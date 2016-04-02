@@ -14,6 +14,8 @@ build-base:
 	docker build -t $(BASE_IMAGE):$(VERSION) docker/base
 
 prepare-app:
+	# Update Dockerrun.aws.json with the current image version
+	sed -i '' "s~${APP_IMAGE}\:[^\"]*~${APP_IMAGE}\:$(VERSION)~g" Dockerrun.aws.json
 	git archive --format tgz HEAD $(APP) > docker/app/$(APP).tgz
 
 build-app:
