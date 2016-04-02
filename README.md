@@ -430,6 +430,7 @@ Now, we need to initialise our `.elasticbeanstalk/config.yml`:
 
     eb init
 
+More info about the `eb cli` tool is to be found on the [Amazon site](http://docs.aws.amazon.com/elasticbeanstalk/latest/dg/eb-cli3-getting-started.html)
 
 ## Create our Elastic Beanstalk application environment
 
@@ -516,12 +517,36 @@ Instead, ff you want the RDS instance to exist outside of the environment you ca
 
 These environment variables can then be [accessed from inside your PHP app](http://docs.aws.amazon.com/elasticbeanstalk/latest/dg/create_deploy_PHP.rds.html#create_deploy_PHP.rds.newDB).
 
-Once we know the public DNS of our ec2 instance, we can ssh in as `ec2-user`.
+We can ssh into our load balancer, and then telnet to our instances:
+
+    eb ssh
+    sudo -s
+    yum install telnet
+    telnet mebooks-mysql-dbinstance.criieggarwwz.ap-southeast-2.rds.amazonaws.com
+
+Once we know the public DNS of our ec2 instance, we can directly ssh in as `ec2-user`.
 
     ssh -i ~/.ssh/aws-eb  ec2-user@ec2-52-62-4-141.ap-southeast-2.compute.amazonaws.com
 
     # Once logged in, elevate to root to be able to acces docker:
     sudo -s
+
+
+## Redeploying
+
+Successive deployments should be a matter of:
+
+    make app
+    docker images
+    docker push mebooks/php-app
+
+As we've tagged our `Dockerrun.aws.json` file with the current version of the repo,
+we need to commit changes, otherwise the `eb create` / `eb deploy`
+(which uses `git archive`) will use the previous version of the `Dockerrun.aws.json` file.
+    git commit -m "Whatever"
+
+    eb deploy -v local-elasticbeanstalk
+
 
 ## Cleaning up
 

@@ -1,7 +1,7 @@
 {
 	"AWSEBDockerrunVersion": 1,
 	"Image": {
-		"Name": "mebooks/php-app:2.4.0-4-g1862c18",
+		"Name": "mebooks/php-app:2.4.0-6-g76a64e7",
 		"Update": "true"
 	},
 	"Authentication": {
