@@ -1,0 +1,45 @@
+{
+    "AWSEBDockerrunVersion": 2,
+    "containerDefinitions": [
+        {
+            "name": "mysql",
+            "image": "mysql:5.6",
+            "essential": true,
+            "portMappings": [
+                {
+                    "hostPort": 3306,
+                    "containerPort": 3306
+                }
+            ],
+            "environment": [
+                {
+                    "name": "MYSQL_USERNAME",
+                    "value": "root"
+                },
+                {
+                    "name": "MYSQL_PASSWORD",
+                    "value": "password"
+                },
+                {
+                    "name": "MYSQL_DB_NAME",
+                    "value": "my_db"
+                }
+            ]
+        },
+        {
+            "name": "php-app",
+            "image": "mebooks/php-app",
+            "essential": true,
+            "memory": 128,
+            "portMappings": [
+                {
+                    "hostPort": 80,
+                    "containerPort": 80
+                }
+            ],
+            "links": [
+                "mysql"
+            ]
+        }
+    ]
+}
