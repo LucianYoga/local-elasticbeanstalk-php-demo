@@ -435,50 +435,93 @@ Now, we need to initialise our `.elasticbeanstalk/config.yml`:
 
 Refer https://github.com/hopsoft/relay/wiki/How-to-Deploy-Docker-apps-to-Elastic-Beanstalk
 
-    # Set our environment variable
-    VERSION=`git describe --tags` && echo $VERSION
-
     # Create our environment, answering the prompts accordingly
-    eb create -v --cname local-elasticbeanstalk local-elasticbeanstalk
+    eb create -v \
+        --scale 2
+        --cname local-elasticbeanstalk \
+        local-elasticbeanstalk
 
-        Enter Environment Name
-        (default is local-elasticbeanstalk):
-        Enter DNS CNAME prefix
-        (default is local-elasticbeanstalk):
+        INFO: Creating new application version using project code
         WARNING: You have uncommitted changes.
-        Creating application version archive "app-920a-160402_122923".
-        Uploading local-elasticbeanstalk-php-demo/app-920a-160402_122923.zip to S3. This may take a while.
+        INFO: Getting version label from git with git-describe
+        Creating application version archive "app-4bbe-160402_140739".
+        INFO: creating zip using git archive HEAD
+        INFO: git archive output: Dockerrun.aws.json
+        php-app/
+        php-app/.env
+        php-app/composer.json
+        php-app/composer.lock
+        php-app/public/
+        php-app/public/index.php
+        php-app/public/mysql.php
+        INFO: Uploading archive to s3 location: local-elasticbeanstalk-php-demo/app-4bbe-160402_140739.zip
+        Uploading local-elasticbeanstalk-php-demo/app-4bbe-160402_140739.zip to S3. This may take a while.
         Upload Complete.
+        INFO: Creating AppVersion app-4bbe-160402_140739
+        INFO: Creating new environment
         Environment details for: local-elasticbeanstalk
           Application name: local-elasticbeanstalk-php-demo
           Region: ap-southeast-2
-          Deployed Version: app-920a-160402_122923
-          Environment ID: e-2fus33kkiw
+          Deployed Version: app-4bbe-160402_140739
+          Environment ID: e-tcwnqqmzep
           Platform: 64bit Amazon Linux 2015.09 v2.0.8 running Docker 1.9.1
           Tier: WebServer-Standard
           CNAME: local-elasticbeanstalk.ap-southeast-2.elasticbeanstalk.com
-          Updated: 2016-04-01 23:29:28.892000+00:00
+          Updated: 2016-04-02 01:07:45.314000+00:00
         Printing Status:
         INFO: createEnvironment is starting.
         INFO: Using elasticbeanstalk-ap-southeast-2-342732433199 as Amazon S3 storage bucket for environment data.
-        INFO: Created security group named: sg-9ff23efb
-        INFO: Created load balancer named: awseb-e-2-AWSEBLoa-1S6M19LJ2NY6R
          -- Events -- (safe to Ctrl+C)
 
     # CTRL-C when prompted, and follow progress:
     eb status
 
+If we want to reference and existing config, we can do tis dring creation:
+
+    eb create -v --cfg local-elasticbeanstalk
+
 Note that `eb create` will use the settings from `.gitattributes` to `export-ignore` files in the zip
 file that it creates and uploads to s3.
-As such, we have to be careful the the `Dockerrun.aws.json` file is included in the root level of our zip file.
+As such, we have to be careful that the `Dockerrun.aws.json` file is included in the root level of our zip file.
 
-    Creating application version archive "app-920a-160402_122923".
-    Uploading local-elasticbeanstalk-php-demo/app-920a-160402_122923.zip to S3. This may take a while.
+    Creating application version archive "app-4bbe-160402_140739".
+    Uploading local-elasticbeanstalk-php-demo/app-4bbe-160402_140739.zip to S3. This may take a while.
 
 We can easily download this zip file and inspect the contents:
 
-    s3cmd get s3://elasticbeanstalk-ap-southeast-2-342732433199/local-elasticbeanstalk-php-demo/app-920a-160402_122923.zip
+    s3cmd get s3://elasticbeanstalk-ap-southeast-2-342732433199/local-elasticbeanstalk-php-demo/app-4bbe-160402_140739.zip
 
+We need to massage our configuration, so create a standard config:
+
+    # This creates `.elasticbeanstalk/local-elasticbeanstalk.env.yml`
+    eb config
+
+Ensure we have settings as we want, e.g. the `MinSize` for autoscaling:
+
+      aws:autoscaling:asg:
+        Availability Zones: Any
+        Cooldown: '360'
+        Custom Availability Zones: 'ap-southeast-2'
+        MaxSize: '4'
+        MinSize: '2'
+
+As per [this answer](http://serverfault.com/a/540916), there's currently no easy way to automate the attachment of an RDS database existing outside of an Elastic Beanstalk environment to the environment during creation.
+
+Instead, ff you want the RDS instance to exist outside of the environment you can simply provide the connection parameters as environment variables via the EB Console: Configuration -> Web Layer -> Software Configuration:
+
+    RDS_HOSTNAME: mebooks-mysql-dbinstance.criieggarwwz.ap-southeast-2.rds.amazonaws.com
+    RDS_DB_NAME : my_db
+    RDS_USERNAME: root
+    RDS_PASSWORD: WHATEVER
+
+These environment variables can then be [accessed from inside your PHP app](http://docs.aws.amazon.com/elasticbeanstalk/latest/dg/create_deploy_PHP.rds.html#create_deploy_PHP.rds.newDB).
+
+Once we know the public DNS of our ec2 instance, we can ssh in as `ec2-user`.
+
+    ssh -i ~/.ssh/aws-eb  ec2-user@ec2-52-62-4-141.ap-southeast-2.compute.amazonaws.com
+
+    # Once logged in, elevate to root to be able to acces docker:
+    sudo -s
 
 ## Cleaning up
 
