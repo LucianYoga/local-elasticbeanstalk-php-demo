@@ -204,10 +204,15 @@ as that that we just built:
 
     FROM mebooks/apache-php5:2.3.0
 
-Build our app docker image:
+Build our app docker image.
+Note that our app docker image wil be tagged with the current version of the repo
+and our `Dockerrun.aws.json` file updated accordingly.
 
     make app
 
+As we've tagged our `Dockerrun.aws.json` file with the current version of the repo,
+we need to commit changes, otherwise the `eb create` / `eb deploy`
+(which uses `git archive`) will use the previous version of the `Dockerrun.aws.json` file.
 
 ## Check that our containers function as expected
 
@@ -473,6 +478,7 @@ As such, we have to be careful the the `Dockerrun.aws.json` file is included in 
 We can easily download this zip file and inspect the contents:
 
     s3cmd get s3://elasticbeanstalk-ap-southeast-2-342732433199/local-elasticbeanstalk-php-demo/app-920a-160402_122923.zip
+
 
 ## Cleaning up
 
