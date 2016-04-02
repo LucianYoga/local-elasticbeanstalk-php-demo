@@ -5,7 +5,7 @@
 		"Update": "true"
 	},
 	"Authentication": {
-		"Bucket": "elasticbeanstalk-us-west-1-342732433199",
+		"Bucket": "elasticbeanstalk-ap-southeast-2-342732433199",
 		"Key": ".dockercfg.json"
 	},
 	"Ports": [

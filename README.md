@@ -279,7 +279,7 @@ becomes
 We now need to push this to a suitable s3 bucket so Elastic Beanstalk can use it to download
 our images from our private repository.
 
-    s3cmd put ~/.docker/.dockercfg.json s3://elasticbeanstalk-us-west-1-342732433199
+    s3cmd put ~/.docker/.dockercfg.json s3://elasticbeanstalk-ap-southeast-2-342732433199
 
 Push our images to docker:
 
@@ -430,8 +430,11 @@ Now, we need to initialise our `.elasticbeanstalk/config.yml`:
 
 Refer https://github.com/hopsoft/relay/wiki/How-to-Deploy-Docker-apps-to-Elastic-Beanstalk
 
+    # Set our environment variable
+    VERSION=`git describe --tags` && echo $VERSION
+
     # Create our environment, answering the prompts accordingly
-    eb create
+    eb create -v --cname local-elasticbeanstalk local-elasticbeanstalk
 
         Enter Environment Name
         (default is local-elasticbeanstalk):
@@ -462,6 +465,7 @@ Refer https://github.com/hopsoft/relay/wiki/How-to-Deploy-Docker-apps-to-Elastic
 
 Note that `eb create` will use the settings from `.gitattributes` to `export-ignore` files in the zip
 file that it creates and uploads to s3.
+As such, we have to be careful the the `Dockerrun.aws.json` file is included in the root level of our zip file.
 
     Creating application version archive "app-920a-160402_122923".
     Uploading local-elasticbeanstalk-php-demo/app-920a-160402_122923.zip to S3. This may take a while.
@@ -469,7 +473,6 @@ file that it creates and uploads to s3.
 We can easily download this zip file and inspect the contents:
 
     s3cmd get s3://elasticbeanstalk-ap-southeast-2-342732433199/local-elasticbeanstalk-php-demo/app-920a-160402_122923.zip
-
 
 ## Cleaning up
 
