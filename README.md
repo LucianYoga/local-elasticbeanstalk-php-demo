@@ -84,6 +84,10 @@ Note that running the `.env_local` loads the environment so we can use docker
 ## Installation
 
 We use `docker-machine` on OSX via the [Docker ToolBox](https://www.docker.com/products/docker-toolbox).
+The easiest way to do this is:
+
+    brew cask install dockertoolbox
+
 As we're using Max OSX, this means that we'll end up with a Virtualbox Linux VM that will be used to run Docker.
 
 Start our `docker-machine`:
@@ -279,7 +283,7 @@ We use a Makefile to make our builds slightly easier:
 
 ## Build the docker images
 
-Commit and tag our changes
+Commit and tag our changes, e.g.:
 
     git tag 2.3.0
 
@@ -505,7 +509,7 @@ Find the appropriate container id, and start a bash shell on it:
     # Access our PHP container
     docker exec -it 832af3ff45d8 bash
 
-Alternatively, we can use `eb` to find the details, including the human-readable container names
+Alternatively, we can use `eb` to find the details, including the human-readable container names:
 
     eb local status
 
@@ -582,7 +586,7 @@ our `.elasticbeanstalk/config.yml` so we can deploy our containers to AWS:
 
     eb init
 
-More info about the `eb cli` tool is to be found on the [Amazon site](http://docs.aws.amazon.com/elasticbeanstalk/latest/dg/eb-cli3-getting-started.html)
+More info about the `eb cli` tool is to be found on the [Amazon site](http://docs.aws.amazon.com/elasticbeanstalk/latest/dg/eb-cli3-getting-started.html).
 
 We'll need to customise our configuration, so create a standard config as a starting point:
 
